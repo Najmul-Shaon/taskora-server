@@ -42,6 +42,16 @@ async function run() {
       res.send(result);
     });
 
+    // get task::: for specific user ::: identified by user email
+    app.get("/get/tasks", async (req, res) => {
+      const user = req.query;
+
+
+      const query = { user: user.email, category: user.category };
+      const result = await taskCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // create user
     app.post("/post/create-user", async (req, res) => {
       const user = req.body;
