@@ -33,8 +33,17 @@ async function run() {
 
     // all the collection are here
     const userCollection = client.db("taskoraDB").collection("users");
+    const taskCollection = client.db("taskoraDB").collection("tasks");
 
-    app.post("/create-user", async (req, res) => {
+    // create task
+    app.post("/post/task", async (req, res) => {
+      const taskInfo = req.body;
+      const result = await taskCollection.insertOne(taskInfo);
+      res.send(result);
+    });
+
+    // create user
+    app.post("/post/create-user", async (req, res) => {
       const user = req.body;
       // check user exist or not
       const query = { userEmail: user.userEmail };
