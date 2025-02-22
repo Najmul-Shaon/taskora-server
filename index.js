@@ -34,10 +34,31 @@ async function run() {
     // all the collection are here
     const userCollection = client.db("taskoraDB").collection("users");
     const taskCollection = client.db("taskoraDB").collection("tasks");
+    const counterCollection = client.db("taskoraDB").collection("counter");
 
     // create task
     app.post("/post/task", async (req, res) => {
-      const taskInfo = req.body;
+      const taskInfo = { ...req.body };
+
+      const counterDoc = await counterCollection.findOne({
+        id: "taskIdCounter",
+      });
+
+      // if (!counterDoc) {
+      //   await counterCollection.insertOne({ id: "taskIdCounter", lastId: 0 });
+      // }
+
+      const newId = counterDoc.lastId + 1;
+      // console.log(newId);
+
+      await counterCollection.updateOne(
+        { id: "taskIdCounter" },
+        { $set: { lastId: newId } }
+      );
+
+      // const newId = (await taskCollection.countDocuments()) + 1;
+      taskInfo.id = newId;
+      // console.log(taskInfo);
       const result = await taskCollection.insertOne(taskInfo);
       res.send(result);
     });
@@ -45,7 +66,6 @@ async function run() {
     // get task::: for specific user ::: identified by user email
     app.get("/get/tasks", async (req, res) => {
       const user = req.query;
-
 
       const query = { user: user.email, category: user.category };
       const result = await taskCollection.find(query).toArray();
