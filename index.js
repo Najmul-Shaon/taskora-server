@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 
@@ -23,18 +23,16 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
-    // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+
 
     // all the collection are here
     const userCollection = client.db("taskoraDB").collection("users");
     const taskCollection = client.db("taskoraDB").collection("tasks");
     const counterCollection = client.db("taskoraDB").collection("counter");
+    const doneTaskCollection = client.db("taskoraDB").collection("doneTask");
+    const inProgressCollection = client
+      .db("taskoraDB")
+      .collection("inProgressTask");
 
     // create task
     app.post("/post/task", async (req, res) => {
@@ -44,22 +42,49 @@ async function run() {
         id: "taskIdCounter",
       });
 
-      // if (!counterDoc) {
-      //   await counterCollection.insertOne({ id: "taskIdCounter", lastId: 0 });
-      // }
-
       const newId = counterDoc.lastId + 1;
-      // console.log(newId);
 
       await counterCollection.updateOne(
         { id: "taskIdCounter" },
         { $set: { lastId: newId } }
       );
 
-      // const newId = (await taskCollection.countDocuments()) + 1;
-      taskInfo.id = newId;
-      // console.log(taskInfo);
+      taskInfo.order = newId;
       const result = await taskCollection.insertOne(taskInfo);
+      res.send(result);
+    });
+
+    // get task to update::: by id
+
+    app.get("/get/task/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = { _id: new ObjectId(id) };
+
+      const result = await taskCollection.findOne(query);
+      res.send(result);
+    });
+
+    // update task by id
+    app.patch("/patch/task/:id", async (req, res) => {
+      const { id } = req.params;
+      const taskInfo = { ...req.body };
+      // console.log(id, taskInfo);
+
+      const query = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          user: taskInfo?.user,
+          title: taskInfo?.title,
+          description: taskInfo?.description,
+          deadline: taskInfo?.deadline,
+          editAt: taskInfo?.editAt,
+          category: taskInfo?.category,
+        },
+      };
+
+      const result = await taskCollection.updateOne(query, updatedDoc);
       res.send(result);
     });
 
@@ -67,9 +92,47 @@ async function run() {
     app.get("/get/tasks", async (req, res) => {
       const user = req.query;
 
-      const query = { user: user.email, category: user.category };
-      const result = await taskCollection.find(query).toArray();
+      // const query = { user: user.email, category: user.category };
+      const query = { user: user.email };
+
+      const result = await taskCollection
+        .find(query)
+        // .sort({ order: 1 })
+        .toArray();
       res.send(result);
+      // }
+    });
+
+    // Update task category
+    app.patch("/update/task/:id", async (req, res) => {
+      const { id } = req.params; // Task ID from URL
+      const { category } = req.body; // New category from frontend
+
+      // console.log(id, category);
+
+      const query = { _id: new ObjectId(id) };
+
+      const updatedDoc = {
+        $set: {
+          category: category,
+        },
+      };
+
+      const result = await taskCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+
+    // delete task
+    app.delete("/delete/task/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = {
+        _id: new ObjectId(id),
+      };
+
+      const result = await taskCollection.deleteOne(query);
+      res.send(result);
+      // console.log(id);
     });
 
     // create user
